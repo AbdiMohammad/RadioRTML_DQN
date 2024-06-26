@@ -1,0 +1,1 @@
+Deep reinforcement learning agent trained based on deep Q networks. It optimizes the RF front-end parameters such as the LNA and mixer bias current to acheive the best system-level performance such as BER, and power consumption.
