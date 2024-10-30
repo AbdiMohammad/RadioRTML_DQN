@@ -34,6 +34,7 @@ class rf_env():
     SymbolDuration = 2e-6
     BitsPerSymbol = 2
     PreambleLength = int(PreambleLengthInBytes * 8 / BitsPerSymbol * SymbolDuration * SamplingFrequency)
+    MaxSteps = 100
 
     @staticmethod
     def configStr(comm_config, fe_config):
@@ -88,17 +89,17 @@ class rf_env():
         self.fe_config_idx = random.randint(0, self.n_actions - 1)
 
         self.step_idx = None
-        self.MaxSteps = 100
+        rf_env.MaxSteps = 100
     
     def improve_comm_env(self, action=None):
         terminated = False
         if self.step_idx is None:
             self.step_idx = 0
-            self.comm_change_steps = list(np.linspace(0, self.MaxSteps, len(rf_env.SignalPower_List) * len(rf_env.SNR_List) + 1, dtype=np.int32))[1:-1] # random.sample(range(0, self.MaxSteps), len(rf_env.SignalPower_List) * len(rf_env.SNR_List))
+            self.comm_change_steps = list(np.linspace(0, rf_env.MaxSteps, len(rf_env.SignalPower_List) * len(rf_env.SNR_List) + 1, dtype=np.int32))[1:-1] # random.sample(range(0, rf_env.MaxSteps), len(rf_env.SignalPower_List) * len(rf_env.SNR_List))
             self.comm_change_steps.sort()
         else:
             self.step_idx += 1
-            if self.step_idx > self.MaxSteps:
+            if self.step_idx > rf_env.MaxSteps:
                 terminated = True
 
         if action is not None:
@@ -135,7 +136,7 @@ class rf_env():
     
     def reset(self, keep_last_config=False):
         self.step_idx = 0
-        self.comm_change_steps = random.sample(range(0, self.MaxSteps), 3)
+        self.comm_change_steps = random.sample(range(0, rf_env.MaxSteps), 3)
         self.comm_change_steps.sort()
 
         self.comm_config = rf_env.CommConfig(random.choice(rf_env.SignalPower_List), random.choice(rf_env.SNR_List))
@@ -167,7 +168,7 @@ class rf_env():
 
         terminated = False
         self.step_idx += 1
-        if self.step_idx > self.MaxSteps:
+        if self.step_idx > rf_env.MaxSteps:
             terminated = True
         
         return observation, reward, terminated, self.measures_dict[rf_env.configStr(self.comm_config, self.getFEConfig())]
