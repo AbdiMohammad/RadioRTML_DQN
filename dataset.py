@@ -56,6 +56,21 @@ class rf_env():
         return measures_dict
     
     @staticmethod
+    def load_all_preambles(dataset_dir):
+        preambles_dict = {}
+        for signal_power in rf_env.SignalPower_List:
+            for snr in rf_env.SNR_List:
+                for lna_current in rf_env.LNACurrent_List:
+                    for mixer_current in rf_env.MixerCurrent_List:
+                        comm_config = rf_env.CommConfig(signal_power, snr)
+                        fe_config = rf_env.FEConfig(lna_current, mixer_current)
+                        preabmle_I = np.loadtxt(os.path.join(dataset_dir, "CadenceGeneratedFiles_0", rf_env.configStr(comm_config, fe_config), "ISignal.csv"), skiprows=3, usecols=(1,), max_rows=rf_env.PreambleLength)[np.newaxis, :]
+                        preabmle_Q = np.loadtxt(os.path.join(dataset_dir, "CadenceGeneratedFiles_0", rf_env.configStr(comm_config, fe_config), "QSignal.csv"), skiprows=3, usecols=(1,), max_rows=rf_env.PreambleLength)[np.newaxis, :]
+                        preambles_dict[rf_env.configStr(comm_config, fe_config)] = np.stack([preabmle_I, preabmle_Q])
+        
+        return preambles_dict
+    
+    @staticmethod
     def calcPower(lna_current, mixer_current):
         return (lna_current * 1) + (mixer_current * 1.2)
     
@@ -72,6 +87,7 @@ class rf_env():
         self.dataset_dir = dataset_dir
 
         self.measures_dict = rf_env.load_all_measures(self.dataset_dir)
+        # self.preambles_dict = rf_env.load_all_preambles(self.dataset_dir)
 
         rmsEVM_Normalized = rf_env.normalize([measures['rmsEVM'] for measures in self.measures_dict.values()])
         Power_Normalized = rf_env.normalize([measures['Power'] for measures in self.measures_dict.values()])
@@ -121,14 +137,15 @@ class rf_env():
                         if rf_env.CommConfig(signal_power, snr) == self.comm_config:
                             comm_config_found = True
         
+        # FIXME: return signal power and snrs instead of preamble IQ symbols
         observation = np.array([self.comm_config.SignalPower, self.comm_config.SNR])
+        # observation = self.get_preamble()
 
         rmsEVM_Normalized = self.measures_dict[rf_env.configStr(self.comm_config, self.getFEConfig())]['rmsEVM_Normalized']
         Power_Normalized = self.measures_dict[rf_env.configStr(self.comm_config, self.getFEConfig())]['Power_Normalized']
         BER = self.measures_dict[rf_env.configStr(self.comm_config, self.getFEConfig())]['BER']
 
-        reward = 2 \
-                 - rmsEVM_Normalized \
+        reward = - rmsEVM_Normalized \
                  - Power_Normalized \
                  - (10e4 * BER)
         
@@ -146,7 +163,7 @@ class rf_env():
         
         # FIXME: return signal power and snrs instead of preamble IQ symbols
         return np.array([self.comm_config.SignalPower, self.comm_config.SNR]), None
-        return self.load_preamble(), None
+        # return self.get_preamble(), None
 
     def step(self, action):
         if len(self.comm_change_steps) > 0 and self.step_idx > self.comm_change_steps[0]:
@@ -154,7 +171,7 @@ class rf_env():
             self.comm_change_steps.pop(0)
 
         self.fe_config_idx = action
-        # observation = self.load_preamble()
+        # observation = self.get_preamble()
         # FIXME: return signal power and snrs instead of preamble IQ symbols
         observation = np.array([self.comm_config.SignalPower, self.comm_config.SNR])
         
@@ -173,10 +190,8 @@ class rf_env():
         
         return observation, reward, terminated, self.measures_dict[rf_env.configStr(self.comm_config, self.getFEConfig())]
 
-    def load_preamble(self, config):
-        preabmle_I = np.loadtxt(os.path.join(self.dataset_dir, "CadenceGeneratedFiles_0", f"{self.signal_power}_{self.snr}_{config[0]}_{config[1].Gain}_{config[1].NF}_{config[1].IIP3}", "ISignal.csv"), skiprows=3, usecols=(1,), max_rows=self.n_observations)[np.newaxis, :]
-        preabmle_Q = np.loadtxt(os.path.join(self.dataset_dir, "CadenceGeneratedFiles_0", f"{self.signal_power}_{self.snr}_{config[0]}_{config[1].Gain}_{config[1].NF}_{config[1].IIP3}", "QSignal.csv"), skiprows=3, usecols=(1,), max_rows=self.n_observations)[np.newaxis, :]
-        return np.stack([preabmle_I, preabmle_Q])
+    def get_preamble(self):
+        return self.preambles_dict[rf_env.configStr(self.comm_config, self.getFEConfig())]
 
     def getFEConfig(self):
         return rf_env.FEConfig(self.getLNACurrent(), self.getMixerCurrent())
