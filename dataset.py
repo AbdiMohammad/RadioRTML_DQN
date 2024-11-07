@@ -91,9 +91,11 @@ class rf_env():
 
         rmsEVM_Normalized = rf_env.normalize([measures['rmsEVM'] for measures in self.measures_dict.values()])
         Power_Normalized = rf_env.normalize([measures['Power'] for measures in self.measures_dict.values()])
+        BER_Normalized = rf_env.normalize([measures['BER'] for measures in self.measures_dict.values()])
         for idx, config in enumerate(self.measures_dict.keys()):
             self.measures_dict[config]['rmsEVM_Normalized'] = rmsEVM_Normalized[idx]
             self.measures_dict[config]['Power_Normalized'] = Power_Normalized[idx]
+            self.measures_dict[config]['BER_Normalized'] = BER_Normalized[idx]
 
         self.n_observations = rf_env.PreambleLength
         # FIXME: return signal power and snrs instead of preamble IQ symbols
@@ -143,11 +145,11 @@ class rf_env():
 
         rmsEVM_Normalized = self.measures_dict[rf_env.configStr(self.comm_config, self.getFEConfig())]['rmsEVM_Normalized']
         Power_Normalized = self.measures_dict[rf_env.configStr(self.comm_config, self.getFEConfig())]['Power_Normalized']
-        BER = self.measures_dict[rf_env.configStr(self.comm_config, self.getFEConfig())]['BER']
+        BER_Normalized = self.measures_dict[rf_env.configStr(self.comm_config, self.getFEConfig())]['BER_Normalized']
 
-        reward = - rmsEVM_Normalized \
-                 - Power_Normalized \
-                 - (10e4 * BER)
+        reward = - (1 * rmsEVM_Normalized) \
+                 - (3 * Power_Normalized) \
+                 - (10 * BER_Normalized)
         
         return observation, reward, terminated, self.measures_dict[rf_env.configStr(self.comm_config, self.getFEConfig())]
     
@@ -177,11 +179,11 @@ class rf_env():
         
         rmsEVM_Normalized = self.measures_dict[rf_env.configStr(self.comm_config, self.getFEConfig())]['rmsEVM_Normalized']
         Power_Normalized = self.measures_dict[rf_env.configStr(self.comm_config, self.getFEConfig())]['Power_Normalized']
-        BER = self.measures_dict[rf_env.configStr(self.comm_config, self.getFEConfig())]['BER']
+        BER_Normalized = self.measures_dict[rf_env.configStr(self.comm_config, self.getFEConfig())]['BER_Normalized']
 
-        reward = - rmsEVM_Normalized \
-                 - Power_Normalized \
-                 - (10e4 * BER)
+        reward = - (1 * rmsEVM_Normalized) \
+                 - (3 * Power_Normalized) \
+                 - (10 * BER_Normalized)
 
         terminated = False
         self.step_idx += 1
